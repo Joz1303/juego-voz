@@ -251,13 +251,28 @@
 const rtcConfig = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" }
+    { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelayproject",
+      credential: "openrelayproject"
+    }
   ]
 };
 
 let socket, stream, myId;
-let peers = {};       // socketId -> RTCPeerConnection
-let players = {};     // socketId -> { name, speaking }
+let peers = {};
+let players = {};
 let muted = false;
 let analyserInterval = null;
 let roomCode = "";
@@ -306,7 +321,6 @@ async function joinRoom() {
     document.getElementById("btnJoin").disabled = false;
   });
 
-  // Ya estaban en la sala cuando entramos
   socket.on("room-users", async (userIds) => {
     for (const id of userIds) {
       addPlayer(id, false);
@@ -315,13 +329,11 @@ async function joinRoom() {
     updateCount();
   });
 
-  // Alguien nuevo entró
   socket.on("user-joined", (id) => {
     addPlayer(id, false);
     updateCount();
   });
 
-  // Recibimos una oferta
   socket.on("offer", async ({ from, offer }) => {
     if (!peers[from]) createPC(from);
     await peers[from].setRemoteDescription(offer);
@@ -330,17 +342,14 @@ async function joinRoom() {
     socket.emit("answer", { to: from, answer });
   });
 
-  // Recibimos una respuesta
   socket.on("answer", async ({ from, answer }) => {
     if (peers[from]) await peers[from].setRemoteDescription(answer);
   });
 
-  // Candidato ICE
   socket.on("ice", async ({ from, candidate }) => {
     if (peers[from]) await peers[from].addIceCandidate(candidate);
   });
 
-  // Alguien salió
   socket.on("user-left", (id) => {
     if (peers[id]) { peers[id].close(); delete peers[id]; }
     removePlayer(id);
@@ -361,11 +370,14 @@ function createPC(targetId) {
   };
 
   pc.ontrack = e => {
-    const audio = document.createElement("audio");
+    let audio = document.getElementById("audio-" + targetId);
+    if (!audio) {
+      audio = document.createElement("audio");
+      audio.id = "audio-" + targetId;
+      audio.autoplay = true;
+      document.body.appendChild(audio);
+    }
     audio.srcObject = e.streams[0];
-    audio.autoplay = true;
-    audio.id = "audio-" + targetId;
-    document.body.appendChild(audio);
   };
 
   return pc;
@@ -404,7 +416,7 @@ function renderPlayers() {
     const label = p.isMe ? "Tú" : "Jugador " + (i + 1);
     return `
       <div class="player-row ${p.speaking ? "speaking" : ""}" id="row-${id}">
-        <div class="avatar" style="color:${color};border-color:${p.speaking ? "#22c55e" : "transparent"}">${initials}</div>
+        <div class="avatar" style="color:${color}">${initials}</div>
         <div class="player-info">
           <div class="player-name">${label}</div>
           <div class="player-sub">${p.speaking ? "hablando" : "en silencio"}</div>
