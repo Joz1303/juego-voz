@@ -2,92 +2,472 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>WebRTC Walkie Talkie</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f13;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .panel { width: 100%; max-width: 380px; }
+    .logo { text-align: center; margin-bottom: 1.5rem; }
+    .logo h1 { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 2px; }
+    .logo p { font-size: 12px; color: #555; margin-top: 4px; }
+    .card {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 10px;
+    }
+    label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
+    input[type="text"] {
+      width: 100%;
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      font-size: 18px;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color 0.2s;
+      text-align: center;
+    }
+    input[type="text"]:focus { border-color: #5b5bd6; }
+    .btn-join {
+      width: 100%;
+      margin-top: 10px;
+      background: #5b5bd6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-join:hover { background: #6c6ce0; }
+    .btn-join:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    .join-section { display: block; }
+    .game-section { display: none; }
+
+    .room-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .room-badge {
+      background: #0f0f13;
+      border: 1px solid #2a2a3a;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 2px;
+      color: #aaa;
+    }
+    .copy-btn {
+      background: none;
+      border: none;
+      color: #5b5bd6;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+    }
+    .copy-btn:hover { color: #9090f0; }
+
+    .players-list { display: flex; flex-direction: column; gap: 6px; min-height: 50px; }
+    .empty { text-align: center; color: #444; font-size: 13px; padding: 16px 0; }
+
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: #0f0f13;
+      border-radius: 8px;
+      border: 1px solid #1e1e2e;
+      transition: border-color 0.2s;
+    }
+    .player-row.speaking { border-color: #22c55e; }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #252540;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #8080cc;
+      flex-shrink: 0;
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .player-row.speaking .avatar { border-color: #22c55e; }
+
+    .player-info { flex: 1; }
+    .player-name { font-size: 13px; font-weight: 500; }
+    .player-sub { font-size: 11px; color: #555; margin-top: 2px; }
+    .player-row.speaking .player-sub { color: #22c55e; }
+
+    .wave {
+      display: none;
+      gap: 2px;
+      align-items: flex-end;
+      height: 14px;
+    }
+    .player-row.speaking .wave { display: flex; }
+    .wave span {
+      width: 3px;
+      background: #22c55e;
+      border-radius: 2px;
+      animation: wav 0.5s ease-in-out infinite alternate;
+    }
+    .wave span:nth-child(2) { animation-delay: 0.15s; }
+    .wave span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes wav { from { height: 3px; } to { height: 13px; } }
+
+    .muted-icon { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+    .player-row.speaking .muted-icon { display: none; }
+
+    .controls { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-mic {
+      flex: 1;
+      background: #1e1e2e;
+      border: 1px solid #2a2a3a;
+      border-radius: 10px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-mic:hover { background: #252535; }
+    .btn-mic.muted { background: #2a1515; border-color: #6b2020; color: #f87171; }
+
+    .btn-leave {
+      background: #1e1e2e;
+      border: 1px solid #2a2a3a;
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: #666;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-leave:hover { background: #2a1515; color: #f87171; border-color: #6b2020; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #555;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0; }
+    .dot.green { background: #22c55e; }
+    .dot.yellow { background: #f59e0b; animation: pulse 1s infinite; }
+    .dot.red { background: #ef4444; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+  </style>
 </head>
 <body>
+<div class="panel">
 
-<h2>WebRTC Walkie Talkie</h2>
-<button onclick="start()">Conectar</button>
+  <div class="logo">
+    <h1>VOICE CHAT</h1>
+    <p>voz en tiempo real para tu juego</p>
+  </div>
+
+  <!-- UNIRSE -->
+  <div class="join-section card" id="joinSection">
+    <label>Código de sala</label>
+    <input type="text" id="roomInput" maxlength="6" placeholder="ABC123" />
+    <button class="btn-join" id="btnJoin" onclick="joinRoom()">Entrar a la sala</button>
+  </div>
+
+  <!-- EN JUEGO -->
+  <div class="game-section" id="gameSection">
+    <div class="card">
+      <div class="room-header">
+        <div>
+          <label style="margin-bottom:3px;">Sala</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="room-badge" id="roomDisplay"></span>
+            <button class="copy-btn" onclick="copyCode()">copiar</button>
+          </div>
+        </div>
+        <span id="playerCount" style="font-size:11px;color:#555;">1 jugador</span>
+      </div>
+
+      <div class="players-list" id="playersList">
+        <div class="empty">Esperando jugadores...</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-mic" id="btnMic" onclick="toggleMic()">
+          <span id="micIcon">🎙</span>
+          <span id="micLabel">Micrófono activo</span>
+        </button>
+        <button class="btn-leave" onclick="leaveRoom()">Salir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Desconectado</span>
+  </div>
+
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io();
-
-let pc = null;
-let stream = null;
-
-// CONFIGURACIÓN STUN (CLAVE PARA CONEXIÓN ENTRE PAÍSES)
 const rtcConfig = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" }
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" }
   ]
 };
 
-async function start() {
-  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+let socket, stream, myId;
+let peers = {};       // socketId -> RTCPeerConnection
+let players = {};     // socketId -> { name, speaking }
+let muted = false;
+let analyserInterval = null;
+let roomCode = "";
 
-  pc = new RTCPeerConnection(rtcConfig);
+const colors = ["#7c6fcd","#3b82f6","#10b981","#f59e0b","#ef4444","#ec4899","#8b5cf6","#06b6d4"];
+
+function setStatus(text, state) {
+  document.getElementById("statusText").textContent = text;
+  const dot = document.getElementById("statusDot");
+  dot.className = "dot " + (state || "");
+}
+
+async function joinRoom() {
+  roomCode = document.getElementById("roomInput").value.trim().toUpperCase();
+  if (!roomCode) return alert("Ingresa un código de sala");
+
+  document.getElementById("btnJoin").disabled = true;
+  setStatus("Conectando...", "yellow");
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    alert("No se pudo acceder al micrófono");
+    document.getElementById("btnJoin").disabled = false;
+    return;
+  }
+
+  socket = io();
+  myId = null;
+
+  socket.on("connect", () => {
+    myId = socket.id;
+    setStatus("Conectado", "green");
+    socket.emit("join-room", roomCode);
+
+    document.getElementById("joinSection").style.display = "none";
+    document.getElementById("gameSection").style.display = "block";
+    document.getElementById("roomDisplay").textContent = roomCode;
+
+    addPlayer(myId, true);
+    startVoiceDetection();
+  });
+
+  socket.on("connect_error", () => {
+    setStatus("Error de conexión", "red");
+    document.getElementById("btnJoin").disabled = false;
+  });
+
+  // Ya estaban en la sala cuando entramos
+  socket.on("room-users", async (userIds) => {
+    for (const id of userIds) {
+      addPlayer(id, false);
+      await createOffer(id);
+    }
+    updateCount();
+  });
+
+  // Alguien nuevo entró
+  socket.on("user-joined", (id) => {
+    addPlayer(id, false);
+    updateCount();
+  });
+
+  // Recibimos una oferta
+  socket.on("offer", async ({ from, offer }) => {
+    if (!peers[from]) createPC(from);
+    await peers[from].setRemoteDescription(offer);
+    const answer = await peers[from].createAnswer();
+    await peers[from].setLocalDescription(answer);
+    socket.emit("answer", { to: from, answer });
+  });
+
+  // Recibimos una respuesta
+  socket.on("answer", async ({ from, answer }) => {
+    if (peers[from]) await peers[from].setRemoteDescription(answer);
+  });
+
+  // Candidato ICE
+  socket.on("ice", async ({ from, candidate }) => {
+    if (peers[from]) await peers[from].addIceCandidate(candidate);
+  });
+
+  // Alguien salió
+  socket.on("user-left", (id) => {
+    if (peers[id]) { peers[id].close(); delete peers[id]; }
+    removePlayer(id);
+    updateCount();
+  });
+
+  socket.on("disconnect", () => setStatus("Desconectado", "red"));
+}
+
+function createPC(targetId) {
+  const pc = new RTCPeerConnection(rtcConfig);
+  peers[targetId] = pc;
 
   stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-  pc.ontrack = event => {
+  pc.onicecandidate = e => {
+    if (e.candidate) socket.emit("ice", { to: targetId, candidate: e.candidate });
+  };
+
+  pc.ontrack = e => {
     const audio = document.createElement("audio");
-    audio.srcObject = event.streams[0];
+    audio.srcObject = e.streams[0];
     audio.autoplay = true;
+    audio.id = "audio-" + targetId;
     document.body.appendChild(audio);
   };
 
-  pc.onicecandidate = event => {
-    if (event.candidate) {
-      socket.emit("ice", event.candidate);
-    }
-  };
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  socket.emit("offer", offer);
+  return pc;
 }
 
-socket.on("offer", async offer => {
-  if (!pc) {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    pc = new RTCPeerConnection(rtcConfig);
+async function createOffer(targetId) {
+  const pc = createPC(targetId);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit("offer", { to: targetId, offer });
+}
 
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+function addPlayer(id, isMe) {
+  players[id] = { isMe, speaking: false };
+  renderPlayers();
+}
 
-    pc.ontrack = event => {
-      const audio = document.createElement("audio");
-      audio.srcObject = event.streams[0];
-      audio.autoplay = true;
-      document.body.appendChild(audio);
-    };
+function removePlayer(id) {
+  delete players[id];
+  const audio = document.getElementById("audio-" + id);
+  if (audio) audio.remove();
+  renderPlayers();
+}
 
-    pc.onicecandidate = event => {
-      if (event.candidate) {
-        socket.emit("ice", event.candidate);
-      }
-    };
+function renderPlayers() {
+  const list = document.getElementById("playersList");
+  const ids = Object.keys(players);
+  if (ids.length === 0) {
+    list.innerHTML = '<div class="empty">Esperando jugadores...</div>';
+    return;
   }
+  list.innerHTML = ids.map((id, i) => {
+    const p = players[id];
+    const initials = id.slice(-2).toUpperCase();
+    const color = colors[i % colors.length];
+    const label = p.isMe ? "Tú" : "Jugador " + (i + 1);
+    return `
+      <div class="player-row ${p.speaking ? "speaking" : ""}" id="row-${id}">
+        <div class="avatar" style="color:${color};border-color:${p.speaking ? "#22c55e" : "transparent"}">${initials}</div>
+        <div class="player-info">
+          <div class="player-name">${label}</div>
+          <div class="player-sub">${p.speaking ? "hablando" : "en silencio"}</div>
+        </div>
+        <div class="wave"><span></span><span></span><span></span></div>
+        <div class="muted-icon"></div>
+      </div>`;
+  }).join("");
+}
 
-  await pc.setRemoteDescription(offer);
+function updateCount() {
+  const n = Object.keys(players).length;
+  document.getElementById("playerCount").textContent = n + (n === 1 ? " jugador" : " jugadores");
+}
 
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  socket.emit("answer", answer);
-});
+function startVoiceDetection() {
+  const ctx = new AudioContext();
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  source.connect(analyser);
+  const data = new Uint8Array(analyser.frequencyBinCount);
 
-socket.on("answer", async answer => {
-  if (pc) {
-    await pc.setRemoteDescription(answer);
-  }
-});
+  analyserInterval = setInterval(() => {
+    if (!myId) return;
+    analyser.getByteFrequencyData(data);
+    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+    const speaking = avg > 15 && !muted;
+    if (players[myId] && players[myId].speaking !== speaking) {
+      players[myId].speaking = speaking;
+      renderPlayers();
+    }
+  }, 100);
+}
 
-socket.on("ice", async candidate => {
-  if (pc) {
-    await pc.addIceCandidate(candidate);
-  }
-});
+function toggleMic() {
+  muted = !muted;
+  stream.getAudioTracks().forEach(t => t.enabled = !muted);
+  document.getElementById("btnMic").className = "btn-mic" + (muted ? " muted" : "");
+  document.getElementById("micIcon").textContent = muted ? "🔇" : "🎙";
+  document.getElementById("micLabel").textContent = muted ? "Micrófono silenciado" : "Micrófono activo";
+  if (players[myId]) { players[myId].speaking = false; renderPlayers(); }
+}
+
+function leaveRoom() {
+  if (analyserInterval) clearInterval(analyserInterval);
+  Object.values(peers).forEach(pc => pc.close());
+  peers = {};
+  if (socket) socket.disconnect();
+  stream.getTracks().forEach(t => t.stop());
+  document.querySelectorAll("audio").forEach(a => a.remove());
+  players = {};
+  muted = false;
+  document.getElementById("gameSection").style.display = "none";
+  document.getElementById("joinSection").style.display = "block";
+  document.getElementById("btnJoin").disabled = false;
+  document.getElementById("roomInput").value = "";
+  setStatus("Desconectado", "");
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(roomCode);
+}
 </script>
-
 </body>
 </html>
