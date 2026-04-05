@@ -59,10 +59,8 @@
     }
     .btn-join:hover { background: #6c6ce0; }
     .btn-join:disabled { background: #333; color: #666; cursor: not-allowed; }
-
     .join-section { display: block; }
     .game-section { display: none; }
-
     .room-header {
       display: flex;
       align-items: center;
@@ -88,10 +86,8 @@
       padding: 0;
     }
     .copy-btn:hover { color: #9090f0; }
-
     .players-list { display: flex; flex-direction: column; gap: 6px; min-height: 50px; }
     .empty { text-align: center; color: #444; font-size: 13px; padding: 16px 0; }
-
     .player-row {
       display: flex;
       align-items: center;
@@ -103,7 +99,6 @@
       transition: border-color 0.2s;
     }
     .player-row.speaking { border-color: #22c55e; }
-
     .avatar {
       width: 34px;
       height: 34px;
@@ -120,18 +115,11 @@
       transition: border-color 0.2s;
     }
     .player-row.speaking .avatar { border-color: #22c55e; }
-
     .player-info { flex: 1; }
     .player-name { font-size: 13px; font-weight: 500; }
     .player-sub { font-size: 11px; color: #555; margin-top: 2px; }
     .player-row.speaking .player-sub { color: #22c55e; }
-
-    .wave {
-      display: none;
-      gap: 2px;
-      align-items: flex-end;
-      height: 14px;
-    }
+    .wave { display: none; gap: 2px; align-items: flex-end; height: 14px; }
     .player-row.speaking .wave { display: flex; }
     .wave span {
       width: 3px;
@@ -142,10 +130,8 @@
     .wave span:nth-child(2) { animation-delay: 0.15s; }
     .wave span:nth-child(3) { animation-delay: 0.3s; }
     @keyframes wav { from { height: 3px; } to { height: 13px; } }
-
     .muted-icon { width: 8px; height: 8px; border-radius: 50%; background: #333; }
     .player-row.speaking .muted-icon { display: none; }
-
     .controls { display: flex; gap: 8px; margin-top: 10px; }
     .btn-mic {
       flex: 1;
@@ -165,7 +151,6 @@
     }
     .btn-mic:hover { background: #252535; }
     .btn-mic.muted { background: #2a1515; border-color: #6b2020; color: #f87171; }
-
     .btn-leave {
       background: #1e1e2e;
       border: 1px solid #2a2a3a;
@@ -177,7 +162,6 @@
       transition: all 0.2s;
     }
     .btn-leave:hover { background: #2a1515; color: #f87171; border-color: #6b2020; }
-
     .status-bar {
       display: flex;
       align-items: center;
@@ -204,14 +188,12 @@
     <p>voz en tiempo real para tu juego</p>
   </div>
 
-  <!-- UNIRSE -->
   <div class="join-section card" id="joinSection">
     <label>Código de sala</label>
     <input type="text" id="roomInput" maxlength="6" placeholder="ABC123" />
     <button class="btn-join" id="btnJoin" onclick="joinRoom()">Entrar a la sala</button>
   </div>
 
-  <!-- EN JUEGO -->
   <div class="game-section" id="gameSection">
     <div class="card">
       <div class="room-header">
@@ -250,22 +232,26 @@
 <script>
 const rtcConfig = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun.relay.metered.ca:80" },
     {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject"
+      urls: "turn:global.relay.metered.ca:80",
+      username: "cba1e3cf962914a5708cf826",
+      credential: "ThQkTSBF9fivlnoL"
     },
     {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject"
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "cba1e3cf962914a5708cf826",
+      credential: "ThQkTSBF9fivlnoL"
     },
     {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject"
+      urls: "turn:global.relay.metered.ca:443",
+      username: "cba1e3cf962914a5708cf826",
+      credential: "ThQkTSBF9fivlnoL"
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "cba1e3cf962914a5708cf826",
+      credential: "ThQkTSBF9fivlnoL"
     }
   ]
 };
@@ -281,8 +267,7 @@ const colors = ["#7c6fcd","#3b82f6","#10b981","#f59e0b","#ef4444","#ec4899","#8b
 
 function setStatus(text, state) {
   document.getElementById("statusText").textContent = text;
-  const dot = document.getElementById("statusDot");
-  dot.className = "dot " + (state || "");
+  document.getElementById("statusDot").className = "dot " + (state || "");
 }
 
 async function joinRoom() {
@@ -307,11 +292,9 @@ async function joinRoom() {
     myId = socket.id;
     setStatus("Conectado", "green");
     socket.emit("join-room", roomCode);
-
     document.getElementById("joinSection").style.display = "none";
     document.getElementById("gameSection").style.display = "block";
     document.getElementById("roomDisplay").textContent = roomCode;
-
     addPlayer(myId, true);
     startVoiceDetection();
   });
@@ -362,13 +345,10 @@ async function joinRoom() {
 function createPC(targetId) {
   const pc = new RTCPeerConnection(rtcConfig);
   peers[targetId] = pc;
-
   stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
   pc.onicecandidate = e => {
     if (e.candidate) socket.emit("ice", { to: targetId, candidate: e.candidate });
   };
-
   pc.ontrack = e => {
     let audio = document.getElementById("audio-" + targetId);
     if (!audio) {
@@ -379,7 +359,6 @@ function createPC(targetId) {
     }
     audio.srcObject = e.streams[0];
   };
-
   return pc;
 }
 
@@ -439,7 +418,6 @@ function startVoiceDetection() {
   analyser.fftSize = 512;
   source.connect(analyser);
   const data = new Uint8Array(analyser.frequencyBinCount);
-
   analyserInterval = setInterval(() => {
     if (!myId) return;
     analyser.getByteFrequencyData(data);
@@ -480,6 +458,9 @@ function leaveRoom() {
 function copyCode() {
   navigator.clipboard.writeText(roomCode);
 }
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
